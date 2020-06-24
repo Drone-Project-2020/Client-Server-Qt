@@ -1,0 +1,53 @@
+#include "myserver.h"
+
+MyServer::MyServer(QObject *parent) : QObject(parent)
+{
+    server = new QTcpServer(this);
+    // SIGNAL : newConnection() est une méthode de l'objet server créer juste avant
+    // SLOT : ConnectToMyServer() appartient à notre classe Server et est définie juste en dessous
+    connect(server, SIGNAL(newConnection()),this, SLOT(ConnectToMyServer()));
+    qDebug() << "Listening:" << server->listen(QHostAddress::LocalHost, 5678);
+}
+
+
+void MyServer::ConnectToMyServer()
+{
+    //tant que le serveur a des connexions en attentes, on boucle
+    while (server->hasPendingConnections())
+    {
+        // retourne la prochaine connexion en attente en tant que socket
+        QTcpSocket *socket = server->nextPendingConnection();
+        socket->write("Hello client\r\n");
+        // syntaxe : connect(sender,fonction_SIGNAL, receiver, fonction_SLOT)
+        // on peu ne rien mettre à la place du receiver, il est par défaut la classe courante : "this"
+
+        //readReady() is emitted when socket detect something written by client
+        connect(socket, SIGNAL(readyRead()),this, SLOT(readyReadMySocket()));
+        //disconnected() signal is emitted when socket has been disconnected, when client left
+        connect(socket, SIGNAL(disconnected()), SLOT(disconnectToMyServer()));
+    }
+}
+
+void MyServer::disconnectToMyServer()
+{
+    //récupère le QObject::sender(), c.a.d le socket et le convertit en QTcpSocket avec static_cast
+    QTcpSocket *socket = static_cast<QTcpSocket*>(sender());
+    // delete socket
+    socket->deleteLater();
+}
+
+void MyServer::readyReadMySocket()
+{
+    //récupère le QObject::sender(), c.a.d le socket et le convertit en QTcpSocket avec static_cast
+    QTcpSocket *socket = static_cast<QTcpSocket*>(sender());
+
+
+    //readAll() read avaible data from client and return it as a byte Array
+     QByteArray Data = socket->readAll();
+    qDebug() << Data;
+
+}
+
+//https://stackoverflow.com/questions/20546750/qtcpsocket-reading-and-writing
+
+
